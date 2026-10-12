@@ -265,19 +265,19 @@
       buttons: [['primary', 'כן, החתמתי', 'out'], ['secondary', 'לא הייתי במשרד היום', 'away']]
     },
     in: {
-      theme: 'done', pose: 'cheer', face: 'grin', icon: 'check', tag: 'נרשם',
-      title: function () { return [['רשמנו שהחתמת ', hl('כניסה')]]; },
-      note: 'לא יישלחו עוד תזכורות הבוקר. יום טוב!', buttons: []
+      theme: 'done', pose: 'cheer', face: 'grin', icon: 'check', tag: 'מעולה',
+      title: function () { return [['תודה! ', hl('יום טוב')]]; },
+      note: 'לא תגיע תזכורת נוספת הבוקר.', buttons: []
     },
     out: {
-      theme: 'done', pose: 'cheer', face: 'grin', icon: 'check', tag: 'נרשם',
-      title: function () { return [['רשמנו שהחתמת ', hl('יציאה')]]; },
-      note: 'ערב טוב, נתראה!', buttons: []
+      theme: 'done', pose: 'cheer', face: 'grin', icon: 'check', tag: 'מעולה',
+      title: function () { return [['תודה! ', hl('ערב טוב')]]; },
+      note: 'לא תגיע תזכורת נוספת היום. נתראה!', buttons: []
     },
     away: {
       theme: 'away', pose: 'rest', face: 'sleepy', icon: 'home', tag: 'יום מחוץ למשרד',
-      title: function () { return [['רשמנו שאינך ', hl('במשרד'), ' היום']]; },
-      note: 'לא יישלחו עוד תזכורות היום.', buttons: []
+      title: function () { return [['יום טוב ', hl('מחוץ למשרד')]]; },
+      note: 'לא יגיעו תזכורות נוספות היום.', buttons: []
     },
     invalid: {
       theme: 'invalid', pose: 'rest', face: 'sad', icon: 'alert', tag: 'קישור לא תקין',
