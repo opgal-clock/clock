@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>תזכורות החתמה</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="החתמה">
+  <meta name="theme-color" content="#E9EDF3">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+      --bg: #E9EDF3;
+      --card: #FFFFFF;
+      --ink: #2B2B33;
+      --muted: #7A7F8A;
+      --line: #E2E5EA;
+      --accent: #4F9AD2;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Assistant", "Segoe UI", Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 16px;
+    }
+    main {
+      width: 100%;
+      max-width: 380px;
+      background: var(--card);
+      border-radius: 32px;
+      padding: 26px 24px 30px;
+      text-align: center;
+      box-shadow: 0 30px 60px -32px rgba(60, 72, 100, .28);
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 17px;
+      margin-bottom: 14px;
+    }
+    .tag svg { width: 20px; height: 20px; }
+    .art { width: min(240px, 68vw); margin: 0 auto 24px; }
+    .art svg { display: block; width: 100%; height: auto; }
+    h1 {
+      font-size: 25px;
+      font-weight: 600;
+      line-height: 1.35;
+      margin: 0 0 10px;
+    }
+    h1 .hl { color: var(--accent); }
+    .note {
+      font-size: 16px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin: 0 auto 26px;
+      max-width: 30ch;
+    }
+    .actions:empty { display: none; }
+    .btn {
+      display: block;
+      width: 100%;
+      max-width: 270px;
+      height: 54px;
+      margin: 0 auto 12px;
+      border-radius: 999px;
+      border: 1.5px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-size: 18px;
+      cursor: pointer;
+      transition: border-color .15s, background-color .15s;
+    }
+    .btn.primary { border-color: var(--accent); font-weight: 600; }
+    .btn.secondary { color: var(--muted); }
+    .btn:active { background: #F6F7F9; }
+    .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+    .btn[disabled] { opacity: .5; cursor: default; }
+    .error { color: #B23B30; font-size: 15px; margin: 6px 0 0; }
+    .pop { animation: pop .5s cubic-bezier(.2, 1.4, .4, 1); }
+    @keyframes pop {
+      from { transform: scale(.82); opacity: .2; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) { .pop { animation: none; } }
+
+    .push {
+      width: 100%; max-width: 380px; margin: 0 auto 14px;
+      background: var(--card); border-radius: 20px; padding: 14px 18px;
+      text-align: center; font-size: 15px; color: var(--muted); line-height: 1.5;
+      box-shadow: 0 20px 40px -30px rgba(60, 72, 100, .28);
+    }
+    .push b { color: var(--ink); font-weight: 600; }
+    .push .btn { margin: 10px auto 0; height: 46px; font-size: 16px; }
+    .push.ok { color: #4C9F41; font-weight: 600; padding: 10px 18px; }
+    .wrap { width: 100%; max-width: 380px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="push" id="push" hidden></div>
+  <main>
+    <div class="tag" id="tag"></div>
+    <div class="art" id="art"></div>
+    <h1 id="title"></h1>
+    <p class="note" id="note"></p>
+    <div class="actions" id="actions"></div>
+    <p class="error" id="err" hidden></p>
+  </main>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+<script>
+  // ---- מזהה העובד וכתובת השרת: מגיעים מהקישור האישי ונשמרים במכשיר ----
+  var params = new URLSearchParams(location.search);
+  function store(k, v) { try { if (v) localStorage.setItem(k, v); return v || localStorage.getItem(k) || ''; } catch (e) { return v || ''; } }
+  var T = store('t', params.get('t'));
+  var API = store('api', params.get('api'));
+  var DATA = { valid: false, name: '', token: T, period: 'morning', already: [] };
+  var CONFIG = null;
+
+  function api(query) {
+    return fetch(API + '?api=' + query, { redirect: 'follow' }).then(function (r) { return r.json(); });
+  }
+  function enc(s) { return encodeURIComponent(s); }
+
+  var INK = '#4B3E44';
+  var THEMES = {
+    morning: { c: '#8CC4EA', d: '#6EA9D4', hl: '#4F9AD2' },
+    evening: { c: '#F6C548', d: '#E2A92A', hl: '#D08E12' },
+    done:    { c: '#8BCB7E', d: '#6DB061', hl: '#4C9F41' },
+    away:    { c: '#B39AD9', d: '#9479C4', hl: '#8462BE' },
+    invalid: { c: '#C9CED6', d: '#AEB4BE', hl: '#7A7F8A' }
+  };
+
+  var ICONS = {
+    sun: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="4.5" fill="#F6C548"/><g stroke="#F6C548" stroke-width="2" stroke-linecap="round"><path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6L16 16M4 16l1.4-1.4M14.6 5.4L16 4"/></g></svg>',
+    moon: '<svg viewBox="0 0 20 20"><path d="M14.5 13.5A7 7 0 0 1 8 3a7 7 0 1 0 9 9.3 7 7 0 0 1-2.5 1.2z" fill="#E2A92A"/></svg>',
+    check: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="#8BCB7E"/><path d="M6 10.3l2.6 2.6L14 7.5" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    home: '<svg viewBox="0 0 20 20"><path d="M3 9.5L10 3l7 6.5V17H3z" fill="#B39AD9"/><rect x="8" y="11.5" width="4" height="5.5" rx="1" fill="#fff"/></svg>',
+    alert: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="#C9CED6"/><path d="M10 5.5v5.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><circle cx="10" cy="14.3" r="1.3" fill="#fff"/></svg>'
+  };
+
+  // דמות שעון מעורר מקורית, בתנוחות שונות
+  function clock(t, pose, face) {
+    var s = '<svg viewBox="0 0 240 240" aria-hidden="true">';
+    s += '<defs><clipPath id="bgc"><circle cx="120" cy="120" r="112"/></clipPath></defs>';
+    s += '<circle cx="120" cy="120" r="112" fill="#F4F4F6"/>';
+    s += '<ellipse clip-path="url(#bgc)" cx="120" cy="238" rx="124" ry="54" fill="#EAEAEE"/>';
+
+    var st = ' stroke="' + INK + '" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"';
+    // רגליים
+    s += '<path d="M104 168 L102 201 L93 202"' + st + '/>';
+    s += '<path d="M136 168 L138 201 L147 202"' + st + '/>';
+
+    // ידיים לפי תנוחה (מאחורי הגוף)
+    if (pose === 'mug') {
+      s += '<path d="M66 124 Q48 112 46 90"' + st + '/>';
+      s += '<path d="M168 128 Q182 122 184 106"' + st + '/>';
+    } else if (pose === 'bag') {
+      s += '<path d="M66 130 Q54 146 56 162"' + st + '/>';
+      s += '<path d="M168 130 Q180 144 182 156"' + st + '/>';
+    } else if (pose === 'cheer') {
+      s += '<path d="M66 120 Q46 104 44 80"' + st + '/>';
+      s += '<path d="M168 120 Q188 104 190 80"' + st + '/>';
+    } else {
+      s += '<path d="M66 132 Q58 148 60 162"' + st + '/>';
+      s += '<path d="M168 132 Q176 148 174 162"' + st + '/>';
+    }
+
+    // פעמונים
+    s += '<path d="M120 50 V60"' + st + '/>';
+    s += '<circle cx="84" cy="66" r="17" fill="' + t.d + '"/>';
+    s += '<circle cx="156" cy="66" r="17" fill="' + t.d + '"/>';
+    // גוף עם הצללה
+    s += '<circle cx="120" cy="118" r="56" fill="' + t.d + '"/>';
+    s += '<circle cx="116" cy="115" r="53" fill="' + t.c + '"/>';
+    // סימוני שעות
+    s += '<g stroke="#fff" stroke-opacity=".65" stroke-width="4" stroke-linecap="round">';
+    s += '<path d="M116 70v7M116 153v7M71 115h7M154 115h7"/></g>';
+    // לחיים
+    s += '<circle cx="94" cy="125" r="6.5" fill="#F7B2AE"/><circle cx="138" cy="125" r="6.5" fill="#F7B2AE"/>';
+
+    // פנים
+    var fs = ' stroke="' + INK + '" stroke-width="4" stroke-linecap="round" fill="none"';
+    if (face === 'awake') {
+      s += '<circle cx="104" cy="109" r="4.2" fill="' + INK + '"/><circle cx="128" cy="109" r="4.2" fill="' + INK + '"/>';
+      s += '<path d="M105 123 q11 10 22 0"' + fs + '/>';
+    } else if (face === 'happy') {
+      s += '<path d="M98 111 q6 -7 12 0"' + fs + '/><path d="M122 111 q6 -7 12 0"' + fs + '/>';
+      s += '<path d="M104 124 q12 11 24 0"' + fs + '/>';
+    } else if (face === 'grin') {
+      s += '<path d="M98 110 q6 -7 12 0"' + fs + '/><path d="M122 110 q6 -7 12 0"' + fs + '/>';
+      s += '<path d="M102 121 q14 18 28 0 z" fill="' + INK + '"/>';
+    } else if (face === 'sleepy') {
+      s += '<path d="M98 109 q6 6 12 0"' + fs + '/><path d="M122 109 q6 6 12 0"' + fs + '/>';
+      s += '<path d="M109 125 q7 5 14 0"' + fs + '/>';
+    } else {
+      s += '<circle cx="104" cy="110" r="4.2" fill="' + INK + '"/><circle cx="128" cy="110" r="4.2" fill="' + INK + '"/>';
+      s += '<path d="M105 132 q11 -9 22 0"' + fs + '/>';
+    }
+
+    // אביזרים
+    if (pose === 'mug') {
+      s += '<path d="M182 80 q-4 -6 0 -12M191 80 q-4 -6 0 -12" stroke="#C9CED6" stroke-width="3" stroke-linecap="round" fill="none"/>';
+      s += '<rect x="175" y="86" width="22" height="22" rx="5" fill="#fff" stroke="' + INK + '" stroke-width="3"/>';
+      s += '<path d="M197 91 q8 0 8 6 q0 6 -8 6" stroke="' + INK + '" stroke-width="3" fill="none"/>';
+    } else if (pose === 'bag') {
+      s += '<path d="M176 158 q7 -12 14 0" stroke="' + INK + '" stroke-width="3" fill="none"/>';
+      s += '<rect x="168" y="157" width="30" height="24" rx="5" fill="#7C6CA6"/>';
+    } else if (pose === 'cheer') {
+      var star = function (x, y, r) {
+        return '<path d="M' + x + ' ' + (y - r) + ' Q' + x + ' ' + y + ' ' + (x + r) + ' ' + y + ' Q' + x + ' ' + y + ' ' + x + ' ' + (y + r) + ' Q' + x + ' ' + y + ' ' + (x - r) + ' ' + y + ' Q' + x + ' ' + y + ' ' + x + ' ' + (y - r) + 'z" fill="' + t.d + '"/>';
+      };
+      s += star(36, 62, 9) + star(200, 58, 11) + star(186, 34, 6);
+    } else if (pose === 'rest' && face === 'sleepy') {
+      s += '<text x="172" y="58" font-family="Assistant, sans-serif" font-weight="700" font-size="20" fill="' + t.hl + '">z</text>';
+      s += '<text x="186" y="40" font-family="Assistant, sans-serif" font-weight="700" font-size="28" fill="' + t.hl + '">Z</text>';
+    }
+    return s + '</svg>';
+  }
+
+  function hl(text) { return { hl: text }; }
+
+  function setTitle(el, lines) {
+    el.textContent = '';
+    lines.forEach(function (parts, i) {
+      if (i) el.appendChild(document.createElement('br'));
+      parts.forEach(function (p) {
+        if (typeof p === 'string') el.appendChild(document.createTextNode(p));
+        else {
+          var span = document.createElement('span');
+          span.className = 'hl';
+          span.textContent = p.hl;
+          el.appendChild(span);
+        }
+      });
+    });
+  }
+
+  var STATES = {
+    morning: {
+      theme: 'morning', pose: 'mug', face: 'awake', icon: 'sun', tag: 'תזכורת בוקר',
+      title: function (n) { return [['בוקר טוב, ' + n], ['החתמת ', hl('כניסה'), '?']]; },
+      note: 'ההחתמה עצמה נעשית בשעון הנוכחות. כאן רק מאשרים, כדי שלא תגיע תזכורת נוספת.',
+      buttons: [['primary', 'כן, החתמתי', 'in'], ['secondary', 'אני לא במשרד היום', 'away']]
+    },
+    evening: {
+      theme: 'evening', pose: 'bag', face: 'happy', icon: 'moon', tag: 'תזכורת ערב',
+      title: function (n) { return [['לפני שיוצאים, ' + n], ['החתמת ', hl('יציאה'), '?']]; },
+      note: 'ההחתמה עצמה נעשית בשעון הנוכחות. כאן רק מאשרים, כדי שלא תגיע תזכורת נוספת.',
+      buttons: [['primary', 'כן, החתמתי', 'out'], ['secondary', 'לא הייתי במשרד היום', 'away']]
+    },
+    in: {
+      theme: 'done', pose: 'cheer', face: 'grin', icon: 'check', tag: 'נרשם',
+      title: function () { return [['רשמנו שהחתמת ', hl('כניסה')]]; },
+      note: 'לא יישלחו עוד תזכורות הבוקר. יום טוב!', buttons: []
+    },
+    out: {
+      theme: 'done', pose: 'cheer', face: 'grin', icon: 'check', tag: 'נרשם',
+      title: function () { return [['רשמנו שהחתמת ', hl('יציאה')]]; },
+      note: 'ערב טוב, נתראה!', buttons: []
+    },
+    away: {
+      theme: 'away', pose: 'rest', face: 'sleepy', icon: 'home', tag: 'יום מחוץ למשרד',
+      title: function () { return [['רשמנו שאינך ', hl('במשרד'), ' היום']]; },
+      note: 'לא יישלחו עוד תזכורות היום.', buttons: []
+    },
+    invalid: {
+      theme: 'invalid', pose: 'rest', face: 'sad', icon: 'alert', tag: 'קישור לא תקין',
+      title: function () { return [['הקישור ', hl('לא תקין')]]; },
+      note: 'אפשר לבקש קישור חדש מהמנהל.', buttons: []
+    }
+  };
+
+
+  STATES.loading = { theme: 'morning', pose: 'rest', face: 'happy', icon: 'sun', tag: 'רגע…',
+    title: function () { return [['טוען…']]; }, note: '', buttons: [] };
+
+  function render(key, animate) {
+    var s = STATES[key];
+    var t = THEMES[s.theme];
+    document.documentElement.style.setProperty('--accent', t.hl);
+    document.getElementById('tag').innerHTML = ICONS[s.icon] + '<span></span>';
+    document.querySelector('#tag span').textContent = s.tag;
+
+    var art = document.getElementById('art');
+    art.innerHTML = clock(t, s.pose, s.face);
+    if (animate) { art.classList.remove('pop'); void art.offsetWidth; art.classList.add('pop'); }
+
+    setTitle(document.getElementById('title'), s.title(DATA.name));
+    document.getElementById('note').textContent = s.note;
+
+    var actions = document.getElementById('actions');
+    actions.textContent = '';
+    s.buttons.forEach(function (b) {
+      var btn = document.createElement('button');
+      btn.className = 'btn ' + b[0];
+      btn.textContent = b[1];
+      btn.onclick = function () { send(b[2]); };
+      actions.appendChild(btn);
+    });
+    document.getElementById('err').hidden = true;
+  }
+
+
+  var STATUS_TO_STATE = { 'אישר כניסה': 'in', 'אישר יציאה': 'out', 'לא במשרד': 'away' };
+
+  function send(action) {
+    var buttons = document.querySelectorAll('main .btn');
+    buttons.forEach(function (b) { b.disabled = true; });
+    api('record&t=' + enc(T) + '&a=' + enc(action))
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.error || 'השמירה נכשלה');
+        render(STATUS_TO_STATE[res.status] || 'in', true);
+      })
+      .catch(function (err) {
+        var el = document.getElementById('err');
+        el.textContent = err.message || 'השמירה נכשלה. נסו שוב.';
+        el.hidden = false;
+        buttons.forEach(function (b) { b.disabled = false; });
+      });
+  }
+
+  function loadStatus() {
+    if (!T || !API) return render('invalid');
+    render('loading');
+    api('status&t=' + enc(T)).then(function (d) {
+      DATA = d;
+      var a = d.already || [];
+      if (!d.valid) return render('invalid');
+      if (a.indexOf('לא במשרד') !== -1) return render('away');
+      if (d.period === 'morning' && a.indexOf('אישר כניסה') !== -1) return render('in');
+      if (d.period === 'evening' && a.indexOf('אישר יציאה') !== -1) return render('out');
+      render(d.period === 'evening' ? 'evening' : 'morning');
+    }).catch(function () { render('invalid'); });
+  }
+
+  // ---- התראות Push ----
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  var pushBox = document.getElementById('push');
+
+  function showPush(html, cls) {
+    pushBox.className = 'push' + (cls ? ' ' + cls : '');
+    pushBox.innerHTML = html;
+    pushBox.hidden = false;
+  }
+
+  function registerDevice() {
+    var reg;
+    return navigator.serviceWorker.register('sw.js?c=' + enc(JSON.stringify(CONFIG.firebase)))
+      .then(function (r) { reg = r; return navigator.serviceWorker.ready; })
+      .then(function () {
+        if (!firebase.apps.length) firebase.initializeApp(CONFIG.firebase);
+        return firebase.messaging().getToken({ vapidKey: CONFIG.vapid, serviceWorkerRegistration: reg });
+      })
+      .then(function (fcm) {
+        if (!fcm) throw new Error('no token');
+        return api('register&t=' + enc(T) + '&fcm=' + enc(fcm));
+      })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.error || 'register failed');
+        showPush('✓ התראות פעילות במכשיר הזה', 'ok');
+      });
+  }
+
+  function enablePush() {
+    // חייב לקרות מיד בלחיצה (דרישה של אייפון)
+    Notification.requestPermission().then(function (perm) {
+      if (perm !== 'granted') { setupPush(); return; }
+      showPush('מחבר את המכשיר…');
+      registerDevice().catch(function () {
+        showPush('<b>החיבור נכשל.</b> אפשר לנסות שוב.<button class="btn primary" id="pushBtn">הפעלת התראות 🔔</button>');
+        document.getElementById('pushBtn').onclick = enablePush;
+      });
+    });
+  }
+
+  function setupPush() {
+    if (!T || !API || !CONFIG) return;
+    if (isIOS && !standalone) {
+      showPush('<b>כדי לקבל תזכורות באייפון:</b><br>פותחים את הקישור הזה בספארי, לוחצים על כפתור השיתוף <b>⬆︎</b>, בוחרים <b>"הוספה למסך הבית"</b>, ופותחים את האפליקציה מהאייקון החדש.');
+      return;
+    }
+    if (!('serviceWorker' in navigator) || !('Notification' in window) || !('PushManager' in window)) {
+      showPush('הדפדפן הזה לא תומך בהתראות. כדאי לפתוח את הקישור בכרום (אנדרואיד) או בספארי (אייפון).');
+      return;
+    }
+    if (Notification.permission === 'denied') {
+      showPush('<b>ההתראות חסומות.</b> אפשר להפעיל אותן בהגדרות הטלפון, תחת האפליקציה או הדפדפן.');
+      return;
+    }
+    if (Notification.permission === 'granted') {
+      registerDevice().catch(function () {});   // מרענן את הרישום בשקט
+      showPush('✓ התראות פעילות במכשיר הזה', 'ok');
+      return;
+    }
+    showPush('<b>רוצים לקבל תזכורת בזמן?</b><br>מפעילים התראות פעם אחת, וזהו.<button class="btn primary" id="pushBtn">הפעלת התראות 🔔</button>');
+    document.getElementById('pushBtn').onclick = enablePush;
+  }
+
+  loadStatus();
+  if (T && API) {
+    api('config').then(function (c) {
+      if (c && c.firebase && c.firebase.apiKey) { CONFIG = c; setupPush(); }
+    }).catch(function () {});
+  }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) loadStatus(); });
+</script>
+</body>
+</html>
