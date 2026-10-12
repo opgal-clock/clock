@@ -383,8 +383,10 @@
     Notification.requestPermission().then(function (perm) {
       if (perm !== 'granted') { setupPush(); return; }
       showPush('מחבר את המכשיר…');
-      registerDevice().catch(function () {
-        showPush('<b>החיבור נכשל.</b> אפשר לנסות שוב.<button class="btn primary" id="pushBtn">הפעלת התראות 🔔</button>');
+      registerDevice().catch(function (err) {
+        console.error('push register failed', err);
+        var msg = String((err && (err.code || err.message)) || err || '').replace(/[<>&]/g, '');
+        showPush('<b>החיבור נכשל.</b> אפשר לנסות שוב.<br><span style="font-size:12px;direction:ltr;display:inline-block">' + msg + '</span><button class="btn primary" id="pushBtn">הפעלת התראות 🔔</button>');
         document.getElementById('pushBtn').onclick = enablePush;
       });
     });
@@ -405,7 +407,7 @@
       return;
     }
     if (Notification.permission === 'granted') {
-      registerDevice().catch(function () {});   // מרענן את הרישום בשקט
+      registerDevice().catch(function (e) { console.error('push refresh failed', e); });   // מרענן את הרישום בשקט
       showPush('✓ התראות פעילות במכשיר הזה', 'ok');
       return;
     }
