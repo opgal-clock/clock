@@ -114,6 +114,15 @@
     .linkbtn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
     .brand { text-align: center; margin: 4px 0 16px; }
     .brand img { height: 34px; width: auto; max-width: 60%; }
+    .times { width: 100%; max-width: 380px; margin: 14px auto 0; background: var(--card); border-radius: 20px; box-shadow: 0 20px 40px -30px rgba(60,72,100,.28); overflow: hidden; }
+    .timesHead { width: 100%; display: flex; justify-content: space-between; align-items: center; background: none; border: none; font: inherit; font-size: 16px; color: var(--ink); padding: 14px 18px; cursor: pointer; }
+    .timesHead b { font-weight: 600; }
+    .timesHead span.sum { color: var(--muted); font-size: 15px; direction: ltr; }
+    .timesBody { padding: 0 18px 16px; text-align: center; }
+    .trow { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); font-size: 16px; }
+    .trow input { font: inherit; font-size: 17px; padding: 6px 10px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); direction: ltr; }
+    .tnote { font-size: 13px; color: var(--muted); line-height: 1.5; margin: 8px 0 4px; }
+    .tmsg { font-size: 14px; min-height: 20px; margin-top: 6px; }
   </style>
 </head>
 <body>
@@ -128,6 +137,17 @@
     <div class="actions" id="actions"></div>
     <p class="error" id="err" hidden></p>
   </main>
+  <div class="times" id="times" hidden>
+    <button class="timesHead" id="timesToggle" aria-expanded="false"><b>⏰ השעות שלי</b><span class="sum" id="timesSum"></span></button>
+    <div class="timesBody" id="timesBody" hidden>
+      <div class="trow"><label for="tm">תזכורת כניסה</label><input type="time" id="tm"></div>
+      <div class="trow"><label for="te">תזכורת יציאה</label><input type="time" id="te"></div>
+      <p class="tnote" id="tnote"></p>
+      <button class="btn primary" id="tsave">שמירה</button>
+      <button class="linkbtn" id="treset">חזרה לשעות הרגילות</button>
+      <p class="tmsg" id="tmsg"></p>
+    </div>
+  </div>
   <p class="optout" id="optoutWrap" hidden>
     <button class="linkbtn" id="optoutBtn">לא מעוניין בתזכורות, הזיכרון שלי מצוין 😉</button>
   </p>
@@ -352,6 +372,7 @@
     render('loading');
     return api('status&t=' + enc(T)).then(function (d) {
       DATA = d;
+      if (window.fillTimes) fillTimes();
       var a = d.already || [];
       if (!d.valid) return render('invalid');
       if (a.indexOf('לא במשרד') !== -1) return render('away');
@@ -442,11 +463,50 @@
     document.getElementById('pushBtn').onclick = enablePush;
   }
 
+  // ---- "השעות שלי" ----
+  var timesBox = document.getElementById('times');
+  var timesBody = document.getElementById('timesBody');
+  window.fillTimes = fillTimes;
+  function fillTimes() {
+    if (!DATA.morning) return;
+    document.getElementById('timesSum').textContent = DATA.morning + ' · ' + DATA.evening;
+    if (timesBody.hidden) {
+      document.getElementById('tm').value = DATA.morning;
+      document.getElementById('te').value = DATA.evening;
+    }
+    var g = DATA.gaps || { morning: 60, evening: 30 };
+    document.getElementById('tnote').textContent =
+      'אם לא לוחצים "כן, החתמתי", תגיע תזכורת נוספת ' + g.morning + ' דקות אחרי תזכורת הכניסה, ו-' + g.evening + ' דקות אחרי תזכורת היציאה.';
+  }
+  document.getElementById('timesToggle').onclick = function () {
+    timesBody.hidden = !timesBody.hidden;
+    this.setAttribute('aria-expanded', String(!timesBody.hidden));
+    document.getElementById('tmsg').textContent = '';
+    if (!timesBody.hidden) fillTimes();
+  };
+  function saveTimes(m, e) {
+    var msg = document.getElementById('tmsg');
+    msg.style.color = 'var(--muted)'; msg.textContent = 'שומר…';
+    api('settimes&t=' + enc(T) + '&m=' + enc(m) + '&e=' + enc(e)).then(function (r) {
+      if (!r.ok) throw new Error(r.error || 'השמירה נכשלה');
+      DATA.morning = r.morning; DATA.evening = r.evening;
+      timesBody.hidden = true; fillTimes(); timesBody.hidden = false;
+      msg.style.color = '#4C9F41'; msg.textContent = '✓ נשמר. התזכורות יגיעו בשעות החדשות.';
+    }).catch(function (err) { msg.style.color = '#B23B30'; msg.textContent = err.message || 'השמירה נכשלה. נסו שוב.'; });
+  }
+  document.getElementById('tsave').onclick = function () {
+    var m = document.getElementById('tm').value, e = document.getElementById('te').value;
+    if (!m || !e) { var msg = document.getElementById('tmsg'); msg.style.color = '#B23B30'; msg.textContent = 'צריך לבחור שתי שעות.'; return; }
+    saveTimes(m, e);
+  };
+  document.getElementById('treset').onclick = function () { saveTimes('', ''); };
+
   // ---- "לא מעוניין בתזכורות" ----
   var optoutWrap = document.getElementById('optoutWrap');
 
   function showOff() {
     optoutWrap.hidden = true;
+    timesBox.hidden = true;
     showPush('<b>התזכורות כבויות.</b><br>בחרת לא לקבל תזכורות. אפשר להחזיר אותן בכל רגע.<button class="btn primary" id="optinBtn">הפעלת תזכורות מחדש 🔔</button>');
     document.getElementById('optinBtn').onclick = function () {
       showPush('מפעיל…');
@@ -454,6 +514,7 @@
         if (!r.ok) throw new Error(r.error);
         DATA.active = true;
         optoutWrap.hidden = false;
+        timesBox.hidden = false; fillTimes();
         if (CONFIG) setupPush(); else showPush('✓ התזכורות הופעלו מחדש', 'ok');
       }).catch(function () { showOff(); });
     };
@@ -469,9 +530,10 @@
   };
 
   function decide() {
-    if (!DATA.valid) { optoutWrap.hidden = true; pushBox.hidden = true; return; }
+    if (!DATA.valid) { optoutWrap.hidden = true; pushBox.hidden = true; timesBox.hidden = true; return; }
     if (DATA.active === false) { showOff(); return; }
     optoutWrap.hidden = false;
+    timesBox.hidden = false; fillTimes();
     setupPush();
   }
 
