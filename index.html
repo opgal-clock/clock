@@ -106,10 +106,19 @@
     .push .btn { margin: 10px auto 0; height: 46px; font-size: 16px; }
     .push.ok { color: #4C9F41; font-weight: 600; padding: 10px 18px; }
     .wrap { width: 100%; max-width: 380px; }
+    .optout { text-align: center; margin: 14px 0 0; }
+    .linkbtn {
+      background: none; border: none; font: inherit; font-size: 14px;
+      color: var(--muted); text-decoration: underline; cursor: pointer; padding: 6px;
+    }
+    .linkbtn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+    .brand { text-align: center; margin: 4px 0 16px; }
+    .brand img { height: 34px; width: auto; max-width: 60%; }
   </style>
 </head>
 <body>
 <div class="wrap">
+  <div class="brand"><img src="data:image/png;base64,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" alt="OPGAL"></div>
   <div class="push" id="push" hidden></div>
   <main>
     <div class="tag" id="tag"></div>
@@ -119,6 +128,9 @@
     <div class="actions" id="actions"></div>
     <p class="error" id="err" hidden></p>
   </main>
+  <p class="optout" id="optoutWrap" hidden>
+    <button class="linkbtn" id="optoutBtn">לא מעוניין בתזכורות, הזיכרון שלי מצוין 😉</button>
+  </p>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -336,9 +348,9 @@
   }
 
   function loadStatus() {
-    if (!T || !API) return render('invalid');
+    if (!T || !API) { render('invalid'); return Promise.resolve(); }
     render('loading');
-    api('status&t=' + enc(T)).then(function (d) {
+    return api('status&t=' + enc(T)).then(function (d) {
       DATA = d;
       var a = d.already || [];
       if (!d.valid) return render('invalid');
@@ -366,7 +378,20 @@
       .then(function (r) { reg = r; return navigator.serviceWorker.ready; })
       .then(function () {
         if (!firebase.apps.length) firebase.initializeApp(CONFIG.firebase);
-        return firebase.messaging().getToken({ vapidKey: CONFIG.vapid, serviceWorkerRegistration: reg });
+        var messaging = firebase.messaging();
+        if (!window.__fgHooked) {
+          window.__fgHooked = true;
+          // כשהאפליקציה פתוחה על המסך, מציגים את ההתראה בעצמנו
+          messaging.onMessage(function (payload) {
+            var n = payload.notification || {}, d = payload.data || {};
+            reg.showNotification(n.title || d.title || 'תזכורת החתמה', {
+              body: n.body || d.body || '', icon: d.icon || 'icon-192.png',
+              dir: 'rtl', lang: 'he', data: { link: d.link || location.href }
+            });
+            loadStatus();
+          });
+        }
+        return messaging.getToken({ vapidKey: CONFIG.vapid, serviceWorkerRegistration: reg });
       })
       .then(function (fcm) {
         if (!fcm) throw new Error('no token');
@@ -378,17 +403,19 @@
       });
   }
 
+  function showFail(err) {
+    console.error('push register failed', err);
+    var msg = String((err && (err.code || err.message)) || err || '').replace(/[<>&]/g, '');
+    showPush('<b>החיבור נכשל.</b> אפשר לנסות שוב.<br><span style="font-size:12px;direction:ltr;display:inline-block">' + msg + '</span><button class="btn primary" id="pushBtn">הפעלת התראות 🔔</button>');
+    document.getElementById('pushBtn').onclick = enablePush;
+  }
+
   function enablePush() {
     // חייב לקרות מיד בלחיצה (דרישה של אייפון)
     Notification.requestPermission().then(function (perm) {
       if (perm !== 'granted') { setupPush(); return; }
       showPush('מחבר את המכשיר…');
-      registerDevice().catch(function (err) {
-        console.error('push register failed', err);
-        var msg = String((err && (err.code || err.message)) || err || '').replace(/[<>&]/g, '');
-        showPush('<b>החיבור נכשל.</b> אפשר לנסות שוב.<br><span style="font-size:12px;direction:ltr;display:inline-block">' + msg + '</span><button class="btn primary" id="pushBtn">הפעלת התראות 🔔</button>');
-        document.getElementById('pushBtn').onclick = enablePush;
-      });
+      registerDevice().catch(showFail);
     });
   }
 
@@ -407,20 +434,52 @@
       return;
     }
     if (Notification.permission === 'granted') {
-      registerDevice().catch(function (e) { console.error('push refresh failed', e); });   // מרענן את הרישום בשקט
-      showPush('✓ התראות פעילות במכשיר הזה', 'ok');
+      showPush('בודק חיבור…');
+      registerDevice().catch(showFail);   // מרענן את הרישום, ומציג ✓ רק אם הצליח
       return;
     }
     showPush('<b>רוצים לקבל תזכורת בזמן?</b><br>מפעילים התראות פעם אחת, וזהו.<button class="btn primary" id="pushBtn">הפעלת התראות 🔔</button>');
     document.getElementById('pushBtn').onclick = enablePush;
   }
 
-  loadStatus();
-  if (T && API) {
-    api('config').then(function (c) {
-      if (c && c.firebase && c.firebase.apiKey) { CONFIG = c; setupPush(); }
-    }).catch(function () {});
+  // ---- "לא מעוניין בתזכורות" ----
+  var optoutWrap = document.getElementById('optoutWrap');
+
+  function showOff() {
+    optoutWrap.hidden = true;
+    showPush('<b>התזכורות כבויות.</b><br>בחרת לא לקבל תזכורות. אפשר להחזיר אותן בכל רגע.<button class="btn primary" id="optinBtn">הפעלת תזכורות מחדש 🔔</button>');
+    document.getElementById('optinBtn').onclick = function () {
+      showPush('מפעיל…');
+      api('optin&t=' + enc(T)).then(function (r) {
+        if (!r.ok) throw new Error(r.error);
+        DATA.active = true;
+        optoutWrap.hidden = false;
+        if (CONFIG) setupPush(); else showPush('✓ התזכורות הופעלו מחדש', 'ok');
+      }).catch(function () { showOff(); });
+    };
   }
+
+  document.getElementById('optoutBtn').onclick = function () {
+    if (!confirm('לכבות את כל התזכורות? אפשר להחזיר אותן בכל רגע.')) return;
+    api('optout&t=' + enc(T)).then(function (r) {
+      if (!r.ok) throw new Error(r.error);
+      DATA.active = false;
+      showOff();
+    }).catch(function () { alert('לא הצלחתי לשמור. נסו שוב.'); });
+  };
+
+  function decide() {
+    if (!DATA.valid) { optoutWrap.hidden = true; pushBox.hidden = true; return; }
+    if (DATA.active === false) { showOff(); return; }
+    optoutWrap.hidden = false;
+    setupPush();
+  }
+
+  var configLoad = (T && API)
+    ? api('config').then(function (c) { if (c && c.firebase && c.firebase.apiKey) CONFIG = c; }).catch(function () {})
+    : Promise.resolve();
+  Promise.all([loadStatus(), configLoad]).then(decide);
+
   document.addEventListener('visibilitychange', function () { if (!document.hidden) loadStatus(); });
 </script>
 </body>

@@ -10,5 +10,16 @@ try {
   }
 } catch (e) {}
 
+// לחיצה על התראה שהאפליקציה הציגה בעצמה
+self.addEventListener('notificationclick', (event) => {
+  const data = event.notification.data || {};
+  if (data.FCM_MSG || !data.link) return;
+  event.notification.close();
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+    for (const c of list) { if ('focus' in c) { c.navigate(data.link); return c.focus(); } }
+    return self.clients.openWindow(data.link);
+  }));
+});
+
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
